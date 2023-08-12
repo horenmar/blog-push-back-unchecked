@@ -18,8 +18,6 @@ namespace Detail {
 
     template <typename T>
     void destroy_range_reverse(T* start, T* end) {
-        // Note: Compiler should be able to figure this out its own,
-        //       but better make sure.
         if constexpr (!std::is_trivially_destructible_v<T>) {
             while (end != start) {
                 --end;
@@ -28,10 +26,12 @@ namespace Detail {
         }
     }
 
-	template <typename T, typename... Args>
-	inline void construct_at(T* const ptr, Args&&... args) {
-		::new (static_cast<void*>(ptr)) T(std::forward<Args>(args)...);
-	}
+    template <typename T, typename... Args>
+    inline T* construct_at(T* const ptr, Args&&... args) {
+        return ::new (static_cast<void*>(ptr)) T(std::forward<Args>(args)...);
+    }
+
+
 
 } // end namespace Detail
 
@@ -47,14 +47,6 @@ class vector {
         const auto old_cap = capacity();
         const auto geometric_cap = old_cap + old_cap / 2;
         return std::max(new_cap, geometric_cap);
-    }
-
-    void adopt_new_memory(T* new_memory, size_t new_capacity) {
-        const auto old_size = size();
-        m_next = std::uninitialized_move(m_first, m_next, new_memory);
-        Detail::deallocate_no_destroy(m_first, old_size);
-        m_first = new_memory;
-        m_end = m_first + new_capacity;
     }
 
     static_assert(std::is_nothrow_move_constructible_v<T>, "No.");
@@ -83,11 +75,11 @@ public:
         m_next = std::uninitialized_copy(rhs.m_first, rhs.m_next, m_first);
         return *this;
     }
-	vector(vector&& rhs):
+    vector(vector&& rhs) :
         m_first(std::exchange(rhs.m_first, nullptr)),
         m_next(std::exchange(rhs.m_next, nullptr)),
         m_end(std::exchange(rhs.m_end, nullptr))
-	{}
+    {}
 
     vector& operator=(vector&& rhs) {
         Detail::destroy_range_reverse(m_first, m_next);
@@ -111,22 +103,20 @@ public:
         auto* new_memory = Detail::allocate_uninit<T>(new_cap);
         // Constructing new element has to happen before we move
         // old elements, in case someone is doing `v.push_back(v[0])`
-        if constexpr (std::is_nothrow_copy_constructible_v<T>) {
+        try {
             Detail::construct_at(new_memory + current_size, elem);
         }
-        else {
-            try {
-                Detail::construct_at(new_memory + current_size, elem);
-            }
-            catch (...) {
-                Detail::deallocate_no_destroy(new_memory, new_cap);
-                // rethrow after fixup, so user knows it happened
-                throw;
-            }
+        catch (...) {
+            Detail::deallocate_no_destroy(new_memory, new_cap);
+            // rethrow after fixup, so user knows it happened
+            throw;
         }
-        adopt_new_memory(new_memory, new_cap);
+        m_next = std::uninitialized_move(m_first, m_next, new_memory);
+        Detail::deallocate_no_destroy(m_first, current_size);
         // Account for the inserted element
         ++m_next;
+        m_first = new_memory;
+        m_end = m_first + new_cap;
     }
     void push_back(T&& elem) {
         // We duplicate the construction code so that the fast path
@@ -141,12 +131,20 @@ public:
         auto* new_memory = Detail::allocate_uninit<T>(new_cap);
         // Constructing new element has to happen before we move
         // old elements, in case someone is doing `v.push_back(v[0])`
-        // We do not have to catch exception here, as we static assert
-        // nothrow move constructibility on our elements.
-        Detail::construct_at(new_memory + current_size, std::move(elem));
-        adopt_new_memory(new_memory, new_cap);
-        // Account for the element inserted ahead of time
+        try {
+            Detail::construct_at(new_memory + current_size, std::move(elem));
+        }
+        catch (...) {
+            Detail::deallocate_no_destroy(new_memory, new_cap);
+            // rethrow after fixup, so user knows it happened
+            throw;
+        }
+        m_next = std::uninitialized_move(m_first, m_next, new_memory);
+        // Account for the inserted element
         ++m_next;
+        Detail::deallocate_no_destroy(m_first, current_size);
+        m_first = new_memory;
+        m_end = m_first + new_cap;
     }
     void push_back_unchecked(T const& elem) noexcept(std::is_nothrow_copy_constructible_v<T>) {
         assert(m_next != m_end);
@@ -161,17 +159,23 @@ public:
 
     void reserve(size_t target_capacity) {
         if (target_capacity <= capacity()) { return; }
+
+        const auto old_size = size();
         const auto new_cap = calculate_new_cap(target_capacity);
+
         auto new_memory = Detail::allocate_uninit<T>(new_cap);
-        adopt_new_memory(new_memory, new_cap);
+        m_next = std::uninitialized_move(m_first, m_next, new_memory);
+        Detail::deallocate_no_destroy(m_first, old_size);
+        m_first = new_memory;
+        m_end = m_first + new_cap;
     }
 
     T& operator[](size_t idx) {
         return m_first[idx];
     }
-	T const& operator[](size_t idx) const {
-		return m_first[idx];
-	}
+    T const& operator[](size_t idx) const {
+        return m_first[idx];
+    }
 
     size_t size() const {
         return m_next - m_first;
