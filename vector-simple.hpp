@@ -135,14 +135,7 @@ public:
         auto* new_memory = Detail::allocate_uninit<T>(new_cap);
         // Constructing new element has to happen before we move
         // old elements, in case someone is doing `v.push_back(v[0])`
-        try {
-            Detail::construct_at(new_memory + current_size, std::move(elem));
-        }
-        catch (...) {
-            Detail::deallocate_no_destroy(new_memory, new_cap);
-            // rethrow after fixup, so user knows it happened
-            throw;
-        }
+        Detail::construct_at(new_memory + current_size, std::move(elem));
         adopt_new_memory(new_memory, new_cap);
         // Account for the inserted element
         ++m_next;
