@@ -32,7 +32,6 @@ namespace Detail {
     }
 
 
-
 } // end namespace Detail
 
 template <typename T>
@@ -50,6 +49,14 @@ class vector {
     }
 
     static_assert(std::is_nothrow_move_constructible_v<T>, "No.");
+
+    void adopt_new_memory(T* new_memory, size_t new_capacity) {
+        const auto old_size = size();
+        m_next = std::uninitialized_move(m_first, m_next, new_memory);
+        Detail::deallocate_no_destroy(m_first, old_size);
+        m_first = new_memory;
+        m_end = m_first + new_capacity;
+    }
 
 public:
     using iterator = T*;
@@ -160,14 +167,10 @@ public:
     void reserve(size_t target_capacity) {
         if (target_capacity <= capacity()) { return; }
 
-        const auto old_size = size();
         const auto new_cap = calculate_new_cap(target_capacity);
 
         auto new_memory = Detail::allocate_uninit<T>(new_cap);
-        m_next = std::uninitialized_move(m_first, m_next, new_memory);
-        Detail::deallocate_no_destroy(m_first, old_size);
-        m_first = new_memory;
-        m_end = m_first + new_cap;
+        adopt_new_memory(new_memory, new_cap);
     }
 
     T& operator[](size_t idx) {
