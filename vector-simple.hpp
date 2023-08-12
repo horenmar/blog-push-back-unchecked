@@ -118,12 +118,9 @@ public:
             // rethrow after fixup, so user knows it happened
             throw;
         }
-        m_next = std::uninitialized_move(m_first, m_next, new_memory);
-        Detail::deallocate_no_destroy(m_first, current_size);
+        adopt_new_memory(new_memory, new_cap);
         // Account for the inserted element
         ++m_next;
-        m_first = new_memory;
-        m_end = m_first + new_cap;
     }
     void push_back(T&& elem) {
         // We duplicate the construction code so that the fast path
@@ -146,12 +143,9 @@ public:
             // rethrow after fixup, so user knows it happened
             throw;
         }
-        m_next = std::uninitialized_move(m_first, m_next, new_memory);
+        adopt_new_memory(new_memory, new_cap);
         // Account for the inserted element
         ++m_next;
-        Detail::deallocate_no_destroy(m_first, current_size);
-        m_first = new_memory;
-        m_end = m_first + new_cap;
     }
     void push_back_unchecked(T const& elem) noexcept(std::is_nothrow_copy_constructible_v<T>) {
         assert(m_next != m_end);
