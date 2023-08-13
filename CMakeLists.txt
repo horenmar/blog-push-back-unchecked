@@ -11,7 +11,10 @@ add_subdirectory(Catch2)
 add_executable(tests
     benches.cpp
     tests.cpp
+    tests-complex.cpp
     vector-simple.hpp
+    test-helpers.cpp
+    test-helpers.hpp
 )
 
 target_link_libraries(tests
