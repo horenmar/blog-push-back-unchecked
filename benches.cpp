@@ -4,6 +4,7 @@
 
 #include "vector-simple.hpp"
 
+#include <cmath>
 #include <vector>
 
 namespace {
@@ -34,8 +35,8 @@ namespace {
 	}
 }
 
-TEST_CASE("Copy ints", "[!benchmark]") {
-	const auto num_elements = GENERATE(1'000, 100'000, 100'000'000);
+TEST_CASE("Copy and multiply ints", "[!benchmark]") {
+	const auto num_elements = GENERATE(1'000, 100'000, 10'000'000);
 	auto data = generate_data(num_elements);
 
 	BENCHMARK("std::vector::push_back, n = " + std::to_string(num_elements)) {
@@ -48,7 +49,7 @@ TEST_CASE("Copy ints", "[!benchmark]") {
 	};
 
 	BENCHMARK("my::vector::push_back, n = " + std::to_string(num_elements)) {
-		vector<int> out;
+		nonstd::vector<int> out;
 		out.reserve(data.size());
 		for (int d : data) {
 			out.push_back(2 * d);
@@ -57,7 +58,7 @@ TEST_CASE("Copy ints", "[!benchmark]") {
 	};
 
 	BENCHMARK("my::vector::push_back_unchecked, n = " + std::to_string(num_elements)) {
-		vector<int> out;
+		nonstd::vector<int> out;
 		out.reserve(data.size());
 		for (int d : data) {
 			out.push_back_unchecked(2 * d);
@@ -67,7 +68,7 @@ TEST_CASE("Copy ints", "[!benchmark]") {
 }
 
 TEST_CASE("Transform to indices", "[!benchmark]") {
-	const auto num_elements = GENERATE(1'000, 100'000, 100'000'000);
+	const auto num_elements = GENERATE(1'000, 100'000, 10'000'000);
 	auto data = generate_key_data(num_elements);
 
 	BENCHMARK("std::vector::push_back, n = " + std::to_string(num_elements)) {
@@ -80,7 +81,7 @@ TEST_CASE("Transform to indices", "[!benchmark]") {
 	};
 
 	BENCHMARK("my::vector::push_back, n = " + std::to_string(num_elements)) {
-		vector<size_t> out;
+		nonstd::vector<size_t> out;
 		out.reserve(data.size());
 		for (Key k : data) {
 			out.push_back(to_index(k));
@@ -89,12 +90,43 @@ TEST_CASE("Transform to indices", "[!benchmark]") {
 	};
 
 	BENCHMARK("my::vector::push_back_unchecked, n = " + std::to_string(num_elements)) {
-		vector<size_t> out;
+		nonstd::vector<size_t> out;
 		out.reserve(data.size());
 		for (Key k : data) {
 			out.push_back_unchecked(to_index(k));
 		}
 		return out;
 	};
+}
 
+TEST_CASE("More expensive int transformation", "[!benchmark]") {
+	const auto num_elements = GENERATE(1'000, 100'000, 10'000'000);
+	auto data = generate_data(num_elements);
+
+	BENCHMARK("std::vector::push_back, n = " + std::to_string(num_elements)) {
+		std::vector<int> out;
+		out.reserve(data.size());
+		for (int d : data) {
+			out.push_back(static_cast<int>(std::sin(d)));
+		}
+		return out;
+	};
+
+	BENCHMARK("my::vector::push_back, n = " + std::to_string(num_elements)) {
+		nonstd::vector<int> out;
+		out.reserve(data.size());
+		for (int d : data) {
+			out.push_back(static_cast<int>(std::sin(d)));
+		}
+		return out;
+	};
+
+	BENCHMARK("my::vector::push_back_unchecked, n = " + std::to_string(num_elements)) {
+		nonstd::vector<int> out;
+		out.reserve(data.size());
+		for (int d : data) {
+			out.push_back_unchecked(static_cast<int>(std::sin(d)));
+		}
+		return out;
+	};
 }

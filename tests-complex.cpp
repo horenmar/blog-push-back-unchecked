@@ -4,7 +4,7 @@
 #include "test-helpers.hpp"
 
 TEST_CASE("Reserving capacity does not construct any elements", "[vector][complex]") {
-	vector<tracker> vec;
+	nonstd::vector<tracker> vec;
 	const auto cnt = tracker::cnt;
 	vec.reserve(10);
 	REQUIRE(vec.capacity() == 10);
@@ -12,7 +12,7 @@ TEST_CASE("Reserving capacity does not construct any elements", "[vector][comple
 }
 
 TEST_CASE("Move constructor does not touch the elements", "[vector][complex]") {
-	vector<tracker> vec1;
+	nonstd::vector<tracker> vec1;
 	vec1.push_back(tracker{ 1 });
 	vec1.push_back(tracker{ 2 });
 	vec1.push_back(tracker{ 4 });
@@ -24,7 +24,7 @@ TEST_CASE("Move constructor does not touch the elements", "[vector][complex]") {
 }
 
 TEST_CASE("Move assignment destroys the old elements and adopts memory", "[vector][complex]") {
-	vector<tracker> vec1, vec2;
+	nonstd::vector<tracker> vec1, vec2;
 	vec1.push_back(tracker{ 1 });
 	vec1.push_back(tracker{ 2 });
 	vec1.push_back(tracker{ 4 });
@@ -40,7 +40,7 @@ TEST_CASE("Move assignment destroys the old elements and adopts memory", "[vecto
 }
 
 TEST_CASE("push_back provides strong exception guarantee", "[vector][complex]") {
-	vector<thrower> vec;
+	nonstd::vector<thrower> vec;
 	vec.reserve(2);
 	REQUIRE(vec.capacity() == 2);
 
