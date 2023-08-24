@@ -91,11 +91,8 @@ namespace nonstd {
         {}
 
         vector& operator=(vector&& rhs) {
-            Detail::destroy_range_reverse(m_first, m_next);
-            Detail::deallocate_no_destroy(m_first, size());
-            m_first = std::exchange(rhs.m_first, nullptr);
-            m_next = std::exchange(rhs.m_next, nullptr);
-            m_end = std::exchange(rhs.m_end, nullptr);
+            auto temp(std::move(rhs));
+            swap(*this, temp);
             return *this;
         }
 
@@ -160,6 +157,12 @@ namespace nonstd {
             const auto new_cap = calculate_new_cap(target_capacity);
             auto new_memory = Detail::allocate_uninit<T>(new_cap);
             adopt_new_memory(new_memory, new_cap);
+        }
+
+        friend void swap(vector& lhs, vector& rhs) noexcept {
+            std::swap(lhs.m_first, rhs.m_first);
+            std::swap(lhs.m_next, rhs.m_next);
+            std::swap(lhs.m_end, rhs.m_end);
         }
 
         T& operator[](size_t idx) {

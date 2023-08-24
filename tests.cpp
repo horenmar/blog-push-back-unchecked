@@ -70,3 +70,12 @@ TEST_CASE("vector moves", "[vector]") {
 		REQUIRE(vec2[1] == 0);
 	}
 }
+
+TEST_CASE("move self-assignment does not break everything") {
+	nonstd::vector<int> vec1;
+	vec1.push_back(2); vec1.push_back(0);
+	vec1 = std::move(vec1);
+	REQUIRE(vec1.size() == 2);
+	REQUIRE(vec1[0] == 2);
+	REQUIRE(vec1[1] == 0);
+}
