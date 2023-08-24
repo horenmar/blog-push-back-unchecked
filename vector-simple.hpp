@@ -75,13 +75,26 @@ namespace nonstd {
             std::uninitialized_copy(rhs.begin(), rhs.end(), m_first);
         }
         vector& operator=(vector const& rhs) {
-            Detail::destroy_range_reverse(m_first, m_next);
-            if (rhs.size() > capacity()) {
-                Detail::deallocate_no_destroy(m_first, size());
-                m_first = Detail::allocate_uninit<T>(rhs.size());
-                m_end = m_first + rhs.size();
+            if (this == &rhs) {
+                return *this;
             }
-            m_next = std::uninitialized_copy(rhs.m_first, rhs.m_next, m_first);
+            // If the elements are no-throw copy constructible, we
+            // can avoid a temporary allocation if we hold enough
+            // memory.
+            if constexpr (std::is_nothrow_copy_constructible_v<T>) {
+                Detail::destroy_range_reverse(m_first, m_next);
+                if (rhs.size() > capacity()) {
+                    Detail::deallocate_no_destroy(m_first, size());
+                    m_first = Detail::allocate_uninit<T>(rhs.size());
+                    m_end = m_first + rhs.size();
+                }
+                m_next = std::uninitialized_copy(rhs.m_first, rhs.m_next, m_first);
+            } else {
+                // For throwing copies we have to make a temporary
+                // allocation, so we go with the copy & swap idiom
+                auto temp(rhs);
+                swap(*this, temp);
+            }
             return *this;
         }
         vector(vector&& rhs) noexcept :
@@ -97,8 +110,6 @@ namespace nonstd {
         }
 
         void push_back(T const& elem) {
-            // We duplicate the construction code so that the fast path
-            // is easier to optimize for the compiler.
             if (m_next != m_end) {
                 Detail::construct_at(m_next, elem);
                 ++m_next;
@@ -122,8 +133,6 @@ namespace nonstd {
             ++m_next;
         }
         void push_back(T&& elem) {
-            // We duplicate the construction code so that the fast path
-            // is easier to optimize for the compiler.
             if (m_next != m_end) {
                 Detail::construct_at(m_next, std::move(elem));
                 ++m_next;
