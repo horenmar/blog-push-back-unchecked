@@ -84,13 +84,13 @@ namespace nonstd {
             m_next = std::uninitialized_copy(rhs.m_first, rhs.m_next, m_first);
             return *this;
         }
-        vector(vector&& rhs) :
+        vector(vector&& rhs) noexcept :
             m_first(std::exchange(rhs.m_first, nullptr)),
             m_next(std::exchange(rhs.m_next, nullptr)),
             m_end(std::exchange(rhs.m_end, nullptr))
         {}
 
-        vector& operator=(vector&& rhs) {
+        vector& operator=(vector&& rhs) noexcept {
             auto temp(std::move(rhs));
             swap(*this, temp);
             return *this;
