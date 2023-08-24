@@ -11,7 +11,7 @@ namespace nonstd {
     namespace Detail {
 
         template <typename T>
-        T* allocate_uninit(size_t count) {
+        [[nodiscard]] T* allocate_uninit(size_t count) {
             return reinterpret_cast<T*>(::operator new[](sizeof(T)* count, std::align_val_t{ alignof(T) }));
         }
         template <typename T>
@@ -44,7 +44,7 @@ namespace nonstd {
         T* m_next = nullptr;
         T* m_end = nullptr;
 
-        size_t calculate_new_cap(const size_t new_cap) {
+        [[nodiscard]] size_t calculate_new_cap(const size_t new_cap) {
             const auto old_cap = capacity();
             const auto geometric_cap = old_cap + old_cap / 2;
             return std::max(new_cap, geometric_cap);
@@ -174,24 +174,24 @@ namespace nonstd {
             std::swap(lhs.m_end, rhs.m_end);
         }
 
-        T& operator[](size_t idx) {
+        [[nodiscard]] T& operator[](size_t idx) {
             return m_first[idx];
         }
-        T const& operator[](size_t idx) const {
+        [[nodiscard]] T const& operator[](size_t idx) const {
             return m_first[idx];
         }
 
-        size_t size() const {
+        [[nodiscard]] size_t size() const {
             return m_next - m_first;
         }
-        size_t capacity() const {
+        [[nodiscard]] size_t capacity() const {
             return m_end - m_first;
         }
 
-        iterator begin() { return m_first; }
-        const_iterator begin() const { return m_first; }
-        iterator end() { return m_next; }
-        const_iterator end() const { return m_next; }
+        [[nodiscard]] iterator begin() { return m_first; }
+        [[nodiscard]] const_iterator begin() const { return m_first; }
+        [[nodiscard]] iterator end() { return m_next; }
+        [[nodiscard]] const_iterator end() const { return m_next; }
     };
 
 } // end nonstd namespace
